@@ -1,0 +1,132 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Translator + Dual Mini Games</title>
+<style>
+body { font-family: Arial, sans-serif; background:#0f0f14; color:#eaeaf0; padding:20px; }
+textarea { width:100%; height:110px; background:#1b1b26; color:#eaeaf0; border:1px solid #333; padding:10px; }
+button, select { margin-top:6px; padding:8px 12px; background:#3b5cff; color:white; border:none; cursor:pointer; }
+pre { background:#1b1b26; padding:10px; border:1px solid #333; margin-top:10px; }
+#gameBox { position:fixed; bottom:20px; right:20px; }
+canvas { background:#1b1b26; border:2px solid white; }
+.hidden { display:none; }
+</style>
+</head>
+<body>
+
+<h2>Translator + Mini Games</h2>
+
+<select id="codeSelect">
+<option value="number">Number Code</option>
+<option value="letters">Letters Code</option>
+</select><br>
+
+<textarea id="input" placeholder="Type here..."></textarea><br>
+<button onclick="encode()">Encode</button>
+<button onclick="decode()">Decode</button>
+
+<pre id="output"></pre>
+<div id="keyDisplay" class="hidden"></div>
+
+<hr>
+<button onclick="switchGame('runner')">Runner Game</button>
+<button onclick="switchGame('fruit')">Fruit Slice</button>
+<button onclick="toggleFullscreen()">Fullscreen</button>
+
+<div id="gameBox">
+<canvas id="runner" width="320" height="120"></canvas>
+<canvas id="fruit" width="320" height="120" class="hidden"></canvas>
+</div>
+
+<script>
+/* ===== Translator ===== */
+const codes={
+number:{key:{A:"31",B:"25",C:"13",D:"43",E:"12",F:"35",G:"21",H:"32",I:"11",J:"45",K:"24",L:"33",M:"14",N:"41",O:"22",P:"34",Q:"15",R:"42",S:"23",T:"44",U:"16",V:"36",W:"26",X:"51",Y:"17",Z:"46"},rev:{}},
+letters:{key:{A:"KA",B:"ZU",C:"ME",D:"RA",E:"TI",F:"LO",G:"SA",H:"NE",I:"KI",J:"VO",K:"DA",L:"RE",M:"MI",N:"NO",O:"TA",P:"SE",Q:"XI",R:"LA",S:"SO",T:"TE",U:"KU",V:"VA",W:"WE",X:"XO",Y:"YA",Z:"ZE"},rev:{}}
+};
+for(let c in codes){codes[c].rev=Object.fromEntries(Object.entries(codes[c].key).map(a=>[a[1],a[0]]));}
+
+function encode(){
+ let t=input.value.toUpperCase();
+ if(t==="CODEKEY"){
+  keyDisplay.textContent="KEYS LOADED";
+  keyDisplay.classList.remove("hidden");
+  return;
+ }
+ keyDisplay.classList.add("hidden");
+ let r=[]; for(let ch of t){if(codes[codeSelect.value].key[ch]) r.push(codes[codeSelect.value].key[ch]); else if(ch===" ") r.push("/");}
+ output.textContent=r.join(" ");
+}
+function decode(){
+ let t=input.value.toUpperCase();
+ let r=""; for(let s of t.split(" ")){if(codes[codeSelect.value].rev[s]) r+=codes[codeSelect.value].rev[s]; else if(s==="/") r+=" ";}
+ output.textContent=r;
+}
+
+/* ===== Game Switch ===== */
+function switchGame(g){
+ runner.classList.toggle("hidden", g!=="runner");
+ fruit.classList.toggle("hidden", g!=="fruit");
+}
+
+/* ===== Fullscreen ===== */
+function toggleFullscreen(){
+ let box=document.getElementById("gameBox");
+ if(!document.fullscreenElement) box.requestFullscreen();
+ else document.exitFullscreen();
+}
+
+/* ===== Runner Game (Easier) ===== */
+const rc=runner.getContext("2d");
+let p={x:40,y:80,w:20,h:20,vy:0,ground:80};
+let obs=[],gapTimer=0;
+document.addEventListener("keydown",e=>{
+ if(e.code==="Space" && p.y===p.ground) p.vy=-8; // LOWER jump
+});
+function runnerLoop(){
+ rc.clearRect(0,0,320,120);
+ p.vy+=0.4; p.y+=p.vy;
+ if(p.y>p.ground){p.y=p.ground;p.vy=0;}
+ rc.fillStyle="lime"; rc.fillRect(p.x,p.y,p.w,p.h);
+
+ gapTimer++;
+ if(gapTimer>180){ // >= 3 blocks spacing
+  obs.push({x:320,y:80,w:20,h:20});
+  gapTimer=0;
+ }
+ for(let i=0;i<obs.length;i++){
+  obs[i].x-=1.3;
+  rc.fillStyle="red"; rc.fillRect(obs[i].x,obs[i].y,obs[i].w,obs[i].h);
+  if(obs[i].x+20<0) obs.splice(i--,1);
+ }
+ requestAnimationFrame(runnerLoop);
+}
+runnerLoop();
+
+/* ===== Fruit Slice Game ===== */
+const fc=fruit.getContext("2d");
+let fruits=[];
+fruit.addEventListener("mousemove",e=>{
+ let r=fruit.getBoundingClientRect();
+ let mx=e.clientX-r.left,my=e.clientY-r.top;
+ fruits=fruits.filter(f=>Math.hypot(f.x-mx,f.y-my)>15);
+});
+function spawnFruit(){
+ fruits.push({x:Math.random()*300+10,y:120,vy:-3-Math.random()*2});
+}
+function fruitLoop(){
+ fc.clearRect(0,0,320,120);
+ if(Math.random()<0.03) spawnFruit();
+ for(let f of fruits){
+  f.vy+=0.1; f.y+=f.vy;
+  fc.fillStyle="orange"; fc.beginPath(); fc.arc(f.x,f.y,10,0,Math.PI*2); fc.fill();
+ }
+ fruits=fruits.filter(f=>f.y<140);
+ requestAnimationFrame(fruitLoop);
+}
+fruitLoop();
+</script>
+</body>
+</html>
